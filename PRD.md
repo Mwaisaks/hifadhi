@@ -90,10 +90,63 @@ Primary: an ordinary Kenyan citizen who has applied for at least one government 
 
 ## 10. Competitive/Prior Art Reference
 
-See `prior-art-huduma-ecitizen.md` for full detail. Key reference points to cite in the pitch: India's DigiLocker (consent-architecture model), Rwanda's Irembo (commission-on-completion business model), Smile Identity (African B2B verification-API business model), and the Auditor-General's own eCitizen audit (the structural gap this fills).
+See `prior-art-huduma-ecitizen.md` for full detail (**note: this file is not currently in the repo** — it holds the research this section summarises). Key reference points to cite in the pitch: India's DigiLocker (consent-architecture model), Rwanda's Irembo (commission-on-completion business model), Smile Identity (African B2B verification-API business model), and the Auditor-General's own eCitizen audit (the structural gap this fills).
 
 ## 11. Business Model (for startup-track judges)
 
-- **Free for citizens** — the wallet itself, uploading, storing, and sharing documents costs the citizen nothing. This drives adoption.
-- **Paid API for verifiers** — institutions (landlords, employers, SACCOs, eventually MDAs) pay per consented verification check, same pattern as Smile Identity's B2B KYC API model.
+### 11.1 Shape of the model
+
+- **Free for citizens** — the wallet itself, uploading, storing, and sharing documents costs the citizen nothing. This is the acquisition strategy, not generosity: every stored document is inventory the verifier side sells consented access to.
+- **Paid API for verifiers** — institutions pay per consented verification check, same pattern as Smile Identity's B2B KYC API model.
 - **Longer-term:** government/MDA partnership on a completion-commission basis (Irembo's model), positioning Hifadhi as the citizen-side "wallet" layer government services plug into rather than a competitor to eCitizen.
+
+### 11.2 Unit economics (measured, not estimated)
+
+One Claude Sonnet vision call per document handles both intake validation and field extraction:
+
+| Item | Value |
+|---|---|
+| Input tokens per document | 1,191 |
+| Output tokens per document | 158 |
+| Cost per document | **$0.0059 ≈ KSh 0.77** |
+| Documents per USD | ~168 |
+| Auto-fill mapping (text-only call) | ~KSh 0.40 |
+| Share / revoke / verify | DB reads — ~zero marginal cost |
+
+Measured against `demo-samples/sample_national_id.png` at Sonnet's $3/MTok input and $15/MTok output, KSh 130/USD. A full-resolution phone photo is a larger image, so budget **KSh 1–1.50 per real upload**.
+
+**The structural advantage:** cost is incurred *once per document at intake*, while revenue is *per verification*, and a single document is verified many times over its life. Gross margin therefore improves with reuse — unlike typical AI products where every unit of usage incurs fresh inference cost.
+
+### 11.3 Pricing and the competitive anchor
+
+Kenya's government IPRS is the incumbent price reference, and its structure is the opening:
+
+| | IPRS | Hifadhi |
+|---|---|---|
+| Per verification | KSh 20 per hit | **KSh 20**, tiering to ~KSh 10 at volume |
+| Connection fee | KSh 50,000 | **None** |
+| Annual subscription | Proposed KSh 500k public / **KSh 1M private** | **None** |
+| What you get | Confirms an ID number exists in the registry | The **document itself**, with citizen consent and an audit trail |
+
+Pricing at the government's own published rate removes any argument about fairness, while dropping the fixed fees removes the barrier that currently locks small institutions out. Gross margin at KSh 20 against KSh 0.77 cost is ~96%; ~92% at the KSh 10 floor.
+
+### 11.4 Go-to-market wedge: SACCOs and microfinance
+
+Chosen over landlords/employers because the obligation is legal rather than discretionary, and the buyer set is small enough to sell to directly:
+
+- **176 licensed deposit-taking SACCOs** (SASRA 2026 list); 357 SASRA-regulated societies in total
+- **7.8 million members** (Dec 2025), sector assets above KSh 1 trillion
+- **POCAMLA 2009** designates SACCOs as reporting institutions with mandatory customer due diligence — identity document verification is a compliance requirement
+- IPRS's proposed **KSh 1M private-institution subscription** prices small SACCOs out of registry access entirely, leaving them on photocopies — a segment that currently *cannot buy this at any price*
+
+**Illustrative revenue (assumption, not a forecast):** 50 SACCOs × 500 verifications/month × KSh 20 ≈ KSh 500,000/month (~KSh 6M/year). Expansion path: employers/HR → landlords and agents → MDAs on completion-commission.
+
+Citizen-side demand is already evidenced: eCitizen carries **22,500+ services across 583 agencies** and processed **~120,000 transactions/day** as of late 2024 — each a potential re-request for the same documents.
+
+### 11.5 Sources
+
+- IPRS fees (KSh 50,000 connection, KSh 20/hit): [State Department for Immigration and Citizen Services](https://usajili.go.ke/integrated-population-registration-service)
+- Proposed IPRS annual subscriptions: [KICTANet](https://posts.kictanet.or.ke/proposed-kshs-1-million-iprs-annual-subscription-fee-could-stifle-innovation/)
+- SACCO counts and sector data: [SASRA](https://www.sasra.go.ke/) · [SASRA 2025 sector performance](https://www.sasra.go.ke/2025/12/10/kenyas-regulated-sacco-sector-records-strong-performance-to-september-2025/) · [Sacco Review / KNBS 2026](https://saccoreview.co.ke/sacco-assets-surge-to-ksh-1-2-trillion-as-membership-hits-7-8-million-knbs-survey-2026/)
+- POCAMLA CDD obligations for SACCOs: [YouVerify](https://youverify.co/en/blogs/kyc-pocamla-compliance-kenya) · [NameScan](https://namescan.io/insights/aml-regulations-kenya-2026/)
+- eCitizen scale: [Eastleigh Voice](https://eastleighvoice.co.ke/national/251693/kenyans-can-now-gain-access-to-over-22,500-government-services-on-ecitizen-platform) · [Daily Nation](https://nation.africa/kenya/news/how-state-minted-sh127bn-on-e-citizen--4783640)

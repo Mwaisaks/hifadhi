@@ -15,6 +15,12 @@ declare global {
 
 function createConnection() {
   const db = new Database(DB_PATH);
+  // `next build` collects page data in parallel worker processes, each of which
+  // imports this module and runs the bootstrap below at the same time. Both the
+  // WAL pragma and `CREATE TABLE` need a write lock, so without a busy timeout
+  // whichever worker loses the race dies with SQLITE_BUSY and fails the build.
+  // Waiting briefly instead also makes concurrent requests more forgiving.
+  db.pragma("busy_timeout = 5000");
   db.pragma("journal_mode = WAL");
   db.pragma("foreign_keys = ON");
   db.exec(`
@@ -37,6 +43,7 @@ function createConnection() {
       auth_tag TEXT NOT NULL,
       extracted_fields TEXT,
       extraction_confidence REAL,
+      pending_extraction TEXT,
       uploaded_at TEXT NOT NULL DEFAULT (datetime('now')),
       expires_at TEXT
     );
@@ -73,6 +80,11 @@ function createConnection() {
     db.exec(
       "ALTER TABLE documents ADD COLUMN mime_type TEXT NOT NULL DEFAULT 'application/octet-stream'"
     );
+  }
+  // Holds the intake extraction so the confirm screen doesn't pay for a second
+  // vision call. Cleared once the citizen confirms the fields.
+  if (!documentColumns.some((c) => c.name === "pending_extraction")) {
+    db.exec("ALTER TABLE documents ADD COLUMN pending_extraction TEXT");
   }
 
   return db;

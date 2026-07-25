@@ -1,31 +1,20 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { getDictionary, type Locale } from "@/lib/i18n";
 
 const POLL_INTERVAL_MS = 3000;
 
-const MESSAGES: Record<string, { title: string; body: string }> = {
-  revoked: {
-    title: "Access revoked",
-    body: "The document owner has just revoked this share link. It can no longer be viewed.",
-  },
-  expired: {
-    title: "Link expired",
-    body: "This share link has expired. Ask the document owner to send a new one.",
-  },
-  not_found: {
-    title: "Link no longer valid",
-    body: "This share link is no longer valid.",
-  },
-};
-
 export default function VerifyGuard({
   token,
+  locale,
   children,
 }: {
   token: string;
+  locale: Locale;
   children: React.ReactNode;
 }) {
+  const dict = getDictionary(locale);
   const [invalidReason, setInvalidReason] = useState<string | null>(null);
 
   useEffect(() => {
@@ -54,7 +43,22 @@ export default function VerifyGuard({
   }, [token]);
 
   if (invalidReason) {
-    const message = MESSAGES[invalidReason] ?? MESSAGES.revoked;
+    const messages: Record<string, { title: string; body: string }> = {
+      revoked: {
+        title: dict.verify.revokedTitle,
+        body: dict.verify.justRevokedBody,
+      },
+      expired: {
+        title: dict.verify.expiredTitle,
+        body: dict.verify.expiredBody,
+      },
+      not_found: {
+        title: dict.verify.invalidTitle,
+        body: dict.verify.invalidBody,
+      },
+    };
+    const message = messages[invalidReason] ?? messages.revoked;
+
     return (
       <div className="min-h-screen flex items-center justify-center bg-neutral-50 px-4">
         <div className="max-w-sm text-center">

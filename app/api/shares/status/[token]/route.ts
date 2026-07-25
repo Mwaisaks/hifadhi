@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { shareState } from "@/lib/expiry";
 
 export async function GET(
   _req: NextRequest,
@@ -14,11 +15,13 @@ export async function GET(
   if (!share) {
     return NextResponse.json({ valid: false, reason: "not_found" });
   }
-  if (share.revoked) {
-    return NextResponse.json({ valid: false, reason: "revoked" });
+
+  // Same helper as `/verify/[token]` renders through, so the live poll can never
+  // disagree with the server-rendered decision about whether a link is usable.
+  const state = shareState(share);
+  if (state !== "active") {
+    return NextResponse.json({ valid: false, reason: state });
   }
-  if (new Date(share.expires_at).getTime() < Date.now()) {
-    return NextResponse.json({ valid: false, reason: "expired" });
-  }
+
   return NextResponse.json({ valid: true });
 }

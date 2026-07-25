@@ -55,7 +55,10 @@ ${JSON.stringify(walletDocuments, null, 2)}
 
 TARGET FORM FIELDS:
 ${JSON.stringify(
-  form.fields.map((f) => ({ key: f.key, label: f.label })),
+  // English labels are the canonical, model-facing description of each field —
+  // the Swahili labels are for display only, so the prompt stays stable
+  // whichever language the citizen is reading the form in.
+  form.fields.map((f) => ({ key: f.key, label: f.label.en })),
   null,
   2
 )}

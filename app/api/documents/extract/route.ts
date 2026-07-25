@@ -5,7 +5,7 @@ import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { decryptBuffer } from "@/lib/crypto";
 import { absoluteDocumentPath } from "@/lib/storage";
-import { extractDocumentFields } from "@/lib/extraction";
+import { extractDocumentFields, extractedFieldsSchema } from "@/lib/extraction";
 
 const bodySchema = z.object({ documentId: z.string().min(1) });
 
@@ -16,6 +16,7 @@ interface DocumentRow {
   iv: string;
   auth_tag: string;
   mime_type: string;
+  pending_extraction: string | null;
 }
 
 export async function POST(req: NextRequest) {
@@ -32,12 +33,25 @@ export async function POST(req: NextRequest) {
 
   const doc = db
     .prepare(
-      `SELECT id, user_id, file_path, iv, auth_tag, mime_type FROM documents WHERE id = ?`
+      `SELECT id, user_id, file_path, iv, auth_tag, mime_type, pending_extraction
+       FROM documents WHERE id = ?`
     )
     .get(parsed.data.documentId) as DocumentRow | undefined;
 
   if (!doc || doc.user_id !== user.id) {
     return NextResponse.json({ error: "Document not found" }, { status: 404 });
+  }
+
+  // The intake check already read this file with Claude vision. Reuse that
+  // result rather than paying for — and waiting on — a second identical call.
+  if (doc.pending_extraction) {
+    try {
+      return NextResponse.json({
+        fields: extractedFieldsSchema.parse(JSON.parse(doc.pending_extraction)),
+      });
+    } catch {
+      // Unreadable cache is not worth failing over; fall through to a live call.
+    }
   }
 
   const ciphertext = await fs.readFile(absoluteDocumentPath(doc.file_path));
