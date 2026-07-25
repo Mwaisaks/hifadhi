@@ -10,7 +10,6 @@ if (!fs.existsSync(STORAGE_DIR)) {
 }
 
 declare global {
-  // eslint-disable-next-line no-var
   var __hifadhiDb: Database.Database | undefined;
 }
 

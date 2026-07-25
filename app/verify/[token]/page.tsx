@@ -78,6 +78,7 @@ export default async function VerifyPage({
     );
   }
 
+  // eslint-disable-next-line react-hooks/purity -- expiry check on a server component, evaluated once per request
   if (new Date(share.expires_at).getTime() < Date.now()) {
     return (
       <StatusScreen

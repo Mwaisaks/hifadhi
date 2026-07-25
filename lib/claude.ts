@@ -22,6 +22,6 @@ export async function pingClaude(): Promise<string> {
     max_tokens: 32,
     messages: [{ role: "user", content: "Reply with exactly: pong" }],
   });
-  const block = message.content[0];
-  return block.type === "text" ? block.text : "";
+  const block = message.content.find((b) => b.type === "text");
+  return block?.type === "text" ? block.text : "";
 }

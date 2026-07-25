@@ -22,6 +22,25 @@ const DOC_TYPE_LABELS: Record<string, string> = {
   other: "Other",
 };
 
+const RENEWAL_WINDOW_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+
+function expiryStatus(
+  expiresAt: string | null
+): { label: string; className: string } | null {
+  if (!expiresAt) return null;
+  const msUntilExpiry = new Date(expiresAt).getTime() - Date.now();
+  if (msUntilExpiry < 0) {
+    return { label: "Expired", className: "text-red-600 bg-red-50 border-red-200" };
+  }
+  if (msUntilExpiry < RENEWAL_WINDOW_MS) {
+    return {
+      label: "Renew soon",
+      className: "text-amber-600 bg-amber-50 border-amber-200",
+    };
+  }
+  return null;
+}
+
 export default async function DashboardPage() {
   const user = await getCurrentUser();
   if (!user) {
@@ -45,6 +64,12 @@ export default async function DashboardPage() {
             <p className="text-sm text-neutral-500">Welcome, {user.name}</p>
           </div>
           <div className="flex items-center gap-4">
+            <Link
+              href="/autofill"
+              className="text-sm font-medium text-neutral-600 hover:text-neutral-900"
+            >
+              Auto-fill demo
+            </Link>
             <Link
               href="/upload"
               className="rounded-lg bg-emerald-600 text-white px-4 py-2 text-sm font-medium hover:bg-emerald-700"
@@ -73,15 +98,23 @@ export default async function DashboardPage() {
               const fields = doc.extracted_fields
                 ? JSON.parse(doc.extracted_fields)
                 : null;
+              const expiry = expiryStatus(doc.expires_at);
               return (
                 <li
                   key={doc.id}
                   className="bg-white rounded-xl border border-neutral-200 p-5 flex items-center justify-between"
                 >
                   <div>
-                    <p className="font-medium text-neutral-900">
+                    <p className="font-medium text-neutral-900 flex items-center gap-2">
                       {DOC_TYPE_LABELS[doc.doc_type] ?? doc.doc_type}
                       {fields?.full_name ? ` — ${fields.full_name}` : ""}
+                      {expiry && (
+                        <span
+                          className={`text-xs font-normal border rounded-full px-2 py-0.5 ${expiry.className}`}
+                        >
+                          {expiry.label}
+                        </span>
+                      )}
                     </p>
                     <p className="text-sm text-neutral-500">
                       {doc.original_filename ?? "document"} · uploaded{" "}

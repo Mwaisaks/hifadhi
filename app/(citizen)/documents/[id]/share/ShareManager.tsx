@@ -102,6 +102,7 @@ export default function ShareManager({
     if (share.revoked) {
       return { label: "Revoked", className: "text-neutral-400" };
     }
+    // eslint-disable-next-line react-hooks/purity -- expiry check, not a stateful re-render concern
     if (new Date(share.expires_at).getTime() < Date.now()) {
       return { label: "Expired", className: "text-neutral-400" };
     }

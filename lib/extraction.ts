@@ -84,8 +84,8 @@ export async function extractDocumentFields(
     ],
   });
 
-  const block = message.content[0];
-  const rawText = block.type === "text" ? block.text : "{}";
+  const block = message.content.find((b) => b.type === "text");
+  const rawText = block?.type === "text" ? block.text : "{}";
   const jsonText = stripCodeFences(rawText);
 
   let parsed: unknown;
