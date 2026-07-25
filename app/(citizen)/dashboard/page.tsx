@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
-import { db } from "@/lib/db";
+import { sql } from "@/lib/db";
 import LogoutButton from "./LogoutButton";
 
 interface DocumentRow {
@@ -47,13 +47,11 @@ export default async function DashboardPage() {
     redirect("/login");
   }
 
-  const documents = db
-    .prepare(
-      `SELECT id, doc_type, original_filename, extracted_fields, extraction_confidence,
-              uploaded_at, expires_at
-       FROM documents WHERE user_id = ? ORDER BY uploaded_at DESC`
-    )
-    .all(user.id) as DocumentRow[];
+  const documents = (await sql`
+    SELECT id, doc_type, original_filename, extracted_fields, extraction_confidence,
+           uploaded_at, expires_at
+    FROM documents WHERE user_id = ${user.id} ORDER BY uploaded_at DESC
+  `) as DocumentRow[];
 
   return (
     <div className="min-h-screen bg-neutral-50">
@@ -118,7 +116,7 @@ export default async function DashboardPage() {
                     </p>
                     <p className="text-sm text-neutral-500">
                       {doc.original_filename ?? "document"} · uploaded{" "}
-                      {new Date(doc.uploaded_at + "Z").toLocaleString()}
+                      {new Date(doc.uploaded_at).toLocaleString()}
                     </p>
                     {!fields && (
                       <p className="text-xs text-amber-600 mt-1">

@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { nanoid } from "nanoid";
-import fs from "fs/promises";
-import { db } from "@/lib/db";
+import { sql } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { encryptBuffer } from "@/lib/crypto";
-import { relativeDocumentPath, absoluteDocumentPath, userStorageDir } from "@/lib/storage";
+import { documentBlobPathname, uploadDocumentBlob } from "@/lib/storage";
 import { logAudit } from "@/lib/audit";
 
 const VALID_DOC_TYPES = [
@@ -49,32 +48,20 @@ export async function POST(req: NextRequest) {
   const { ciphertext, iv, authTag } = encryptBuffer(plaintext);
 
   const documentId = nanoid();
-  userStorageDir(user.id);
-  const relPath = relativeDocumentPath(user.id, documentId);
-  await fs.writeFile(absoluteDocumentPath(relPath), ciphertext);
+  const pathname = documentBlobPathname(user.id, documentId);
+  const storedPathname = await uploadDocumentBlob(pathname, ciphertext);
 
-  db.prepare(
-    `INSERT INTO documents (id, user_id, doc_type, original_filename, mime_type, file_path, iv, auth_tag)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-  ).run(
-    documentId,
-    user.id,
-    docType,
-    file.name,
-    file.type || "application/octet-stream",
-    relPath,
-    iv,
-    authTag
-  );
+  await sql`
+    INSERT INTO documents (id, user_id, doc_type, original_filename, mime_type, file_path, iv, auth_tag)
+    VALUES (${documentId}, ${user.id}, ${docType}, ${file.name}, ${file.type || "application/octet-stream"}, ${storedPathname}, ${iv}, ${authTag})
+  `;
 
-  logAudit({ documentId, action: "uploaded", actorLabel: "owner" });
+  await logAudit({ documentId, action: "uploaded", actorLabel: "owner" });
 
-  const row = db
-    .prepare(
-      `SELECT id, doc_type, original_filename, uploaded_at, extracted_fields, expires_at
-       FROM documents WHERE id = ?`
-    )
-    .get(documentId);
+  const rows = await sql`
+    SELECT id, doc_type, original_filename, uploaded_at, extracted_fields, expires_at
+    FROM documents WHERE id = ${documentId}
+  `;
 
-  return NextResponse.json({ document: row });
+  return NextResponse.json({ document: rows[0] });
 }

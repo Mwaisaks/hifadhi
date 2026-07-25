@@ -1,5 +1,5 @@
 import { nanoid } from "nanoid";
-import { db } from "./db";
+import { sql } from "./db";
 
 export type AuditAction =
   | "uploaded"
@@ -8,40 +8,30 @@ export type AuditAction =
   | "revoked"
   | "autofill_used";
 
-export function logAudit(params: {
+export async function logAudit(params: {
   documentId: string;
   shareId?: string | null;
   action: AuditAction;
   actorLabel: string;
 }) {
-  db.prepare(
-    `INSERT INTO audit_log (id, document_id, share_id, action, actor_label)
-     VALUES (?, ?, ?, ?, ?)`
-  ).run(
-    nanoid(),
-    params.documentId,
-    params.shareId ?? null,
-    params.action,
-    params.actorLabel
-  );
+  await sql`
+    INSERT INTO audit_log (id, document_id, share_id, action, actor_label)
+    VALUES (${nanoid()}, ${params.documentId}, ${params.shareId ?? null}, ${params.action}, ${params.actorLabel})
+  `;
 }
 
-export function getAuditLogForDocument(documentId: string) {
-  return db
-    .prepare(
-      `SELECT * FROM audit_log WHERE document_id = ? ORDER BY occurred_at DESC`
-    )
-    .all(documentId);
+export async function getAuditLogForDocument(documentId: string) {
+  return sql`
+    SELECT * FROM audit_log WHERE document_id = ${documentId} ORDER BY occurred_at DESC
+  `;
 }
 
-export function getAuditLogForUser(userId: string) {
-  return db
-    .prepare(
-      `SELECT audit_log.*, documents.doc_type
-       FROM audit_log
-       JOIN documents ON documents.id = audit_log.document_id
-       WHERE documents.user_id = ?
-       ORDER BY audit_log.occurred_at DESC`
-    )
-    .all(userId);
+export async function getAuditLogForUser(userId: string) {
+  return sql`
+    SELECT audit_log.*, documents.doc_type
+    FROM audit_log
+    JOIN documents ON documents.id = audit_log.document_id
+    WHERE documents.user_id = ${userId}
+    ORDER BY audit_log.occurred_at DESC
+  `;
 }

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { db } from "@/lib/db";
+import { sql } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 
@@ -18,24 +18,21 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid input" }, { status: 400 });
   }
 
-  const row = db
-    .prepare(
-      `SELECT shares.id as share_id, shares.document_id as document_id, documents.user_id as owner_id
-       FROM shares
-       JOIN documents ON documents.id = shares.document_id
-       WHERE shares.id = ?`
-    )
-    .get(parsed.data.shareId) as
-    | { share_id: string; document_id: string; owner_id: string }
-    | undefined;
+  const rows = (await sql`
+    SELECT shares.id as share_id, shares.document_id as document_id, documents.user_id as owner_id
+    FROM shares
+    JOIN documents ON documents.id = shares.document_id
+    WHERE shares.id = ${parsed.data.shareId}
+  `) as { share_id: string; document_id: string; owner_id: string }[];
+  const row = rows[0];
 
   if (!row || row.owner_id !== user.id) {
     return NextResponse.json({ error: "Share not found" }, { status: 404 });
   }
 
-  db.prepare("UPDATE shares SET revoked = 1 WHERE id = ?").run(row.share_id);
+  await sql`UPDATE shares SET revoked = true WHERE id = ${row.share_id}`;
 
-  logAudit({
+  await logAudit({
     documentId: row.document_id,
     shareId: row.share_id,
     action: "revoked",

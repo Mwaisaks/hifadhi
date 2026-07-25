@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { BUSINESS_PERMIT_FORM } from "@/lib/forms";
+import { safeJson } from "@/lib/http";
 
 type Values = Record<string, string>;
 type FilledFrom = Record<string, boolean>;
@@ -27,7 +28,7 @@ export default function AutofillForm() {
       const res = await fetch(`/api/autofill/${BUSINESS_PERMIT_FORM.id}`, {
         method: "POST",
       });
-      const data = await res.json();
+      const data = await safeJson(res);
       if (!res.ok) {
         setError(data.error ?? "Auto-fill failed");
         return;

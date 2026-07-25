@@ -3,6 +3,7 @@
 import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { safeJson } from "@/lib/http";
 
 interface Fields {
   doc_type: string | null;
@@ -56,7 +57,7 @@ export default function ConfirmPage({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ documentId: id }),
         });
-        const data = await res.json();
+        const data = await safeJson(res);
         if (cancelled) return;
         if (!res.ok) {
           setExtractionFailed(true);
@@ -91,7 +92,7 @@ export default function ConfirmPage({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(fields),
       });
-      const data = await res.json();
+      const data = await safeJson(res);
       if (!res.ok) {
         setError(data.error ?? "Save failed");
         return;

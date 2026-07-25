@@ -36,6 +36,11 @@ yarn-error.log*
 # vercel
 .vercel
 
+# claude code local settings, agent skill caches
+.claude/settings.local.json
+.agents/
+skills-lock.json
+
 # encrypted document storage + sqlite db
 /storage/*
 !/storage/.gitkeep

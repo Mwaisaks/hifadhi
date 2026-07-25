@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { db } from "@/lib/db";
+import { sql } from "@/lib/db";
 import { verifyPassword, createSessionToken, SESSION_COOKIE_NAME } from "@/lib/auth";
 
 const loginSchema = z.object({
@@ -17,13 +17,10 @@ export async function POST(req: NextRequest) {
 
   const { email, password } = parsed.data;
 
-  const user = db
-    .prepare(
-      "SELECT id, name, email, password_hash FROM users WHERE email = ?"
-    )
-    .get(email) as
-    | { id: string; name: string; email: string; password_hash: string }
-    | undefined;
+  const rows = (await sql`
+    SELECT id, name, email, password_hash FROM users WHERE email = ${email}
+  `) as { id: string; name: string; email: string; password_hash: string }[];
+  const user = rows[0];
 
   if (!user) {
     return NextResponse.json(

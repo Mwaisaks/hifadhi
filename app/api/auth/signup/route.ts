@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { nanoid } from "nanoid";
 import { z } from "zod";
-import { db } from "@/lib/db";
+import { sql } from "@/lib/db";
 import { hashPassword, createSessionToken, SESSION_COOKIE_NAME } from "@/lib/auth";
 
 const signupSchema = z.object({
@@ -22,10 +22,8 @@ export async function POST(req: NextRequest) {
 
   const { name, email, password } = parsed.data;
 
-  const existing = db
-    .prepare("SELECT id FROM users WHERE email = ?")
-    .get(email);
-  if (existing) {
+  const existing = await sql`SELECT id FROM users WHERE email = ${email}`;
+  if (existing.length > 0) {
     return NextResponse.json(
       { error: "An account with this email already exists" },
       { status: 409 }
@@ -35,9 +33,10 @@ export async function POST(req: NextRequest) {
   const id = nanoid();
   const passwordHash = await hashPassword(password);
 
-  db.prepare(
-    "INSERT INTO users (id, name, email, password_hash) VALUES (?, ?, ?, ?)"
-  ).run(id, name, email, passwordHash);
+  await sql`
+    INSERT INTO users (id, name, email, password_hash)
+    VALUES (${id}, ${name}, ${email}, ${passwordHash})
+  `;
 
   const token = await createSessionToken(id);
 

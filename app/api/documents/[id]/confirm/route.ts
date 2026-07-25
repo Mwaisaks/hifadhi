@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { db } from "@/lib/db";
+import { sql } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 
 const confirmSchema = z.object({
@@ -34,9 +34,10 @@ export async function POST(
 
   const { id: documentId } = await params;
 
-  const doc = db
-    .prepare("SELECT id, user_id, doc_type FROM documents WHERE id = ?")
-    .get(documentId) as { id: string; user_id: string; doc_type: string } | undefined;
+  const docRows = (await sql`
+    SELECT id, user_id, doc_type FROM documents WHERE id = ${documentId}
+  `) as { id: string; user_id: string; doc_type: string }[];
+  const doc = docRows[0];
 
   if (!doc || doc.user_id !== user.id) {
     return NextResponse.json({ error: "Document not found" }, { status: 404 });
@@ -54,24 +55,19 @@ export async function POST(
   const { doc_type, confidence, ...fields } = parsed.data;
   const expiresAt = toIsoDateOrNull(fields.expiry_date);
 
-  db.prepare(
-    `UPDATE documents
-     SET doc_type = ?, extracted_fields = ?, extraction_confidence = ?, expires_at = ?
-     WHERE id = ?`
-  ).run(
-    doc_type ?? doc.doc_type,
-    JSON.stringify(fields),
-    confidence ?? null,
-    expiresAt,
-    documentId
-  );
+  await sql`
+    UPDATE documents
+    SET doc_type = ${doc_type ?? doc.doc_type},
+        extracted_fields = ${JSON.stringify(fields)},
+        extraction_confidence = ${confidence ?? null},
+        expires_at = ${expiresAt}
+    WHERE id = ${documentId}
+  `;
 
-  const updated = db
-    .prepare(
-      `SELECT id, doc_type, original_filename, extracted_fields, extraction_confidence, uploaded_at, expires_at
-       FROM documents WHERE id = ?`
-    )
-    .get(documentId);
+  const updatedRows = await sql`
+    SELECT id, doc_type, original_filename, extracted_fields, extraction_confidence, uploaded_at, expires_at
+    FROM documents WHERE id = ${documentId}
+  `;
 
-  return NextResponse.json({ document: updated });
+  return NextResponse.json({ document: updatedRows[0] });
 }

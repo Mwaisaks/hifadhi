@@ -1,7 +1,7 @@
 import { SignJWT, jwtVerify } from "jose";
 import bcrypt from "bcryptjs";
 import { cookies } from "next/headers";
-import { db } from "./db";
+import { sql } from "./db";
 
 export const SESSION_COOKIE_NAME = "hifadhi_session";
 const SESSION_DURATION = "7d";
@@ -54,9 +54,9 @@ export async function getCurrentUser(): Promise<SessionUser | null> {
   const session = await verifySessionToken(token);
   if (!session) return null;
 
-  const user = db
-    .prepare("SELECT id, name, email FROM users WHERE id = ?")
-    .get(session.userId) as SessionUser | undefined;
+  const rows = (await sql`
+    SELECT id, name, email FROM users WHERE id = ${session.userId}
+  `) as SessionUser[];
 
-  return user ?? null;
+  return rows[0] ?? null;
 }

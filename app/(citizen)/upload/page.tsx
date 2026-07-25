@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { safeJson } from "@/lib/http";
 
 const DOC_TYPES = [
   { value: "national_id", label: "National ID" },
@@ -39,7 +40,7 @@ export default function UploadPage() {
         method: "POST",
         body: formData,
       });
-      const data = await res.json();
+      const data = await safeJson(res);
       if (!res.ok) {
         setError(data.error ?? "Upload failed");
         return;

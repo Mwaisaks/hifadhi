@@ -1,18 +1,13 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { sql } from "@/lib/db";
 import { pingClaude } from "@/lib/claude";
 
 export async function GET() {
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS health_check (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      checked_at TEXT NOT NULL DEFAULT (datetime('now'))
-    );
-  `);
-  db.prepare("INSERT INTO health_check DEFAULT VALUES").run();
-  const row = db
-    .prepare("SELECT COUNT(*) as count FROM health_check")
-    .get() as { count: number };
+  await sql`INSERT INTO health_check DEFAULT VALUES`;
+  const rows = (await sql`SELECT COUNT(*) as count FROM health_check`) as {
+    count: string;
+  }[];
+  const count = Number(rows[0].count);
 
   let claudeReply: string;
   try {
@@ -21,7 +16,7 @@ export async function GET() {
     return NextResponse.json(
       {
         db: "ok",
-        healthCheckRows: row.count,
+        healthCheckRows: count,
         claude: "error",
         error: err instanceof Error ? err.message : String(err),
       },
@@ -31,7 +26,7 @@ export async function GET() {
 
   return NextResponse.json({
     db: "ok",
-    healthCheckRows: row.count,
+    healthCheckRows: count,
     claude: claudeReply,
   });
 }

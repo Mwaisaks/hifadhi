@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { sql } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { getForm } from "@/lib/forms";
 import { mapWalletToForm, type WalletDocument } from "@/lib/autofill";
@@ -26,12 +26,10 @@ export async function POST(
     return NextResponse.json({ error: "Unknown form" }, { status: 404 });
   }
 
-  const rows = db
-    .prepare(
-      `SELECT id, doc_type, extracted_fields FROM documents
-       WHERE user_id = ? AND extracted_fields IS NOT NULL`
-    )
-    .all(user.id) as DocumentRow[];
+  const rows = (await sql`
+    SELECT id, doc_type, extracted_fields FROM documents
+    WHERE user_id = ${user.id} AND extracted_fields IS NOT NULL
+  `) as DocumentRow[];
 
   const walletDocuments: WalletDocument[] = rows.map((row) => {
     const fields = JSON.parse(row.extracted_fields);
@@ -66,7 +64,7 @@ export async function POST(
   );
 
   for (const documentId of contributingDocumentIds) {
-    logAudit({ documentId, action: "autofill_used", actorLabel: "owner" });
+    await logAudit({ documentId, action: "autofill_used", actorLabel: "owner" });
   }
 
   return NextResponse.json({ fillPlan });

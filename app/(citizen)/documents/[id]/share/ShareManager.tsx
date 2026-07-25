@@ -2,13 +2,14 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { safeJson } from "@/lib/http";
 
 interface ShareRow {
   id: string;
   share_token: string;
   shared_with_label: string;
   expires_at: string;
-  revoked: number;
+  revoked: boolean;
   created_at: string;
 }
 
@@ -65,7 +66,7 @@ export default function ShareManager({
           expiresInHours,
         }),
       });
-      const data = await res.json();
+      const data = await safeJson(res);
       if (!res.ok) {
         setError(data.error ?? "Could not create share link");
         return;
@@ -236,7 +237,7 @@ export default function ShareManager({
                   <span className="text-neutral-500">{entry.actor_label}</span>
                 </span>
                 <span className="text-xs text-neutral-400">
-                  {new Date(entry.occurred_at + "Z").toLocaleString()}
+                  {new Date(entry.occurred_at).toLocaleString()}
                 </span>
               </li>
             ))}

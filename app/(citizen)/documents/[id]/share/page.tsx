@@ -1,7 +1,7 @@
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth";
-import { db } from "@/lib/db";
+import { sql } from "@/lib/db";
 import ShareManager from "./ShareManager";
 
 interface DocumentRow {
@@ -17,7 +17,7 @@ interface ShareRow {
   share_token: string;
   shared_with_label: string;
   expires_at: string;
-  revoked: number;
+  revoked: boolean;
   created_at: string;
 }
 
@@ -48,30 +48,25 @@ export default async function SharePage({
 
   const { id } = await params;
 
-  const doc = db
-    .prepare(
-      `SELECT id, user_id, doc_type, original_filename, extracted_fields
-       FROM documents WHERE id = ?`
-    )
-    .get(id) as DocumentRow | undefined;
+  const docRows = (await sql`
+    SELECT id, user_id, doc_type, original_filename, extracted_fields
+    FROM documents WHERE id = ${id}
+  `) as DocumentRow[];
+  const doc = docRows[0];
 
   if (!doc || doc.user_id !== user.id) {
     notFound();
   }
 
-  const shares = db
-    .prepare(
-      `SELECT id, share_token, shared_with_label, expires_at, revoked, created_at
-       FROM shares WHERE document_id = ? ORDER BY created_at DESC`
-    )
-    .all(id) as ShareRow[];
+  const shares = (await sql`
+    SELECT id, share_token, shared_with_label, expires_at, revoked, created_at
+    FROM shares WHERE document_id = ${id} ORDER BY created_at DESC
+  `) as ShareRow[];
 
-  const auditLog = db
-    .prepare(
-      `SELECT id, action, actor_label, occurred_at
-       FROM audit_log WHERE document_id = ? ORDER BY occurred_at DESC`
-    )
-    .all(id) as AuditRow[];
+  const auditLog = (await sql`
+    SELECT id, action, actor_label, occurred_at
+    FROM audit_log WHERE document_id = ${id} ORDER BY occurred_at DESC
+  `) as AuditRow[];
 
   const fields = doc.extracted_fields ? JSON.parse(doc.extracted_fields) : null;
 

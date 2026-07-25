@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import fs from "fs/promises";
 import { z } from "zod";
-import { db } from "@/lib/db";
+import { sql } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { decryptBuffer } from "@/lib/crypto";
-import { absoluteDocumentPath } from "@/lib/storage";
+import { downloadDocumentBlob } from "@/lib/storage";
 import { extractDocumentFields } from "@/lib/extraction";
 
 const bodySchema = z.object({ documentId: z.string().min(1) });
@@ -30,17 +29,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid input" }, { status: 400 });
   }
 
-  const doc = db
-    .prepare(
-      `SELECT id, user_id, file_path, iv, auth_tag, mime_type FROM documents WHERE id = ?`
-    )
-    .get(parsed.data.documentId) as DocumentRow | undefined;
+  const rows = (await sql`
+    SELECT id, user_id, file_path, iv, auth_tag, mime_type FROM documents WHERE id = ${parsed.data.documentId}
+  `) as DocumentRow[];
+  const doc = rows[0];
 
   if (!doc || doc.user_id !== user.id) {
     return NextResponse.json({ error: "Document not found" }, { status: 404 });
   }
 
-  const ciphertext = await fs.readFile(absoluteDocumentPath(doc.file_path));
+  const ciphertext = await downloadDocumentBlob(doc.file_path);
   const plaintext = decryptBuffer(ciphertext, doc.iv, doc.auth_tag);
   const base64Data = plaintext.toString("base64");
 

@@ -1,7 +1,6 @@
-import fs from "fs/promises";
-import { db } from "@/lib/db";
+import { sql } from "@/lib/db";
 import { decryptBuffer } from "@/lib/crypto";
-import { absoluteDocumentPath } from "@/lib/storage";
+import { downloadDocumentBlob } from "@/lib/storage";
 import { logAudit } from "@/lib/audit";
 import VerifyGuard from "./VerifyGuard";
 
@@ -12,7 +11,7 @@ interface ShareRow {
   document_id: string;
   shared_with_label: string;
   expires_at: string;
-  revoked: number;
+  revoked: boolean;
 }
 
 interface DocumentRow {
@@ -56,12 +55,11 @@ export default async function VerifyPage({
 }) {
   const { token } = await params;
 
-  const share = db
-    .prepare(
-      `SELECT id, document_id, shared_with_label, expires_at, revoked
-       FROM shares WHERE share_token = ?`
-    )
-    .get(token) as ShareRow | undefined;
+  const shareRows = (await sql`
+    SELECT id, document_id, shared_with_label, expires_at, revoked
+    FROM shares WHERE share_token = ${token}
+  `) as ShareRow[];
+  const share = shareRows[0];
 
   if (!share) {
     return (
@@ -91,12 +89,11 @@ export default async function VerifyPage({
     );
   }
 
-  const doc = db
-    .prepare(
-      `SELECT id, doc_type, mime_type, file_path, iv, auth_tag, extracted_fields
-       FROM documents WHERE id = ?`
-    )
-    .get(share.document_id) as DocumentRow | undefined;
+  const docRows = (await sql`
+    SELECT id, doc_type, mime_type, file_path, iv, auth_tag, extracted_fields
+    FROM documents WHERE id = ${share.document_id}
+  `) as DocumentRow[];
+  const doc = docRows[0];
 
   if (!doc) {
     return (
@@ -107,11 +104,11 @@ export default async function VerifyPage({
     );
   }
 
-  const ciphertext = await fs.readFile(absoluteDocumentPath(doc.file_path));
+  const ciphertext = await downloadDocumentBlob(doc.file_path);
   const plaintext = decryptBuffer(ciphertext, doc.iv, doc.auth_tag);
   const base64Data = plaintext.toString("base64");
 
-  logAudit({
+  await logAudit({
     documentId: doc.id,
     shareId: share.id,
     action: "viewed",

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { nanoid } from "nanoid";
 import { z } from "zod";
-import { db } from "@/lib/db";
+import { sql } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 
@@ -28,9 +28,10 @@ export async function POST(req: NextRequest) {
 
   const { documentId, sharedWithLabel, expiresInHours } = parsed.data;
 
-  const doc = db
-    .prepare("SELECT id, user_id FROM documents WHERE id = ?")
-    .get(documentId) as { id: string; user_id: string } | undefined;
+  const docRows = (await sql`
+    SELECT id, user_id FROM documents WHERE id = ${documentId}
+  `) as { id: string; user_id: string }[];
+  const doc = docRows[0];
 
   if (!doc || doc.user_id !== user.id) {
     return NextResponse.json({ error: "Document not found" }, { status: 404 });
@@ -42,12 +43,12 @@ export async function POST(req: NextRequest) {
     Date.now() + expiresInHours * 60 * 60 * 1000
   ).toISOString();
 
-  db.prepare(
-    `INSERT INTO shares (id, document_id, share_token, shared_with_label, permissions, expires_at)
-     VALUES (?, ?, ?, ?, 'view_only', ?)`
-  ).run(shareId, documentId, shareToken, sharedWithLabel, expiresAt);
+  await sql`
+    INSERT INTO shares (id, document_id, share_token, shared_with_label, permissions, expires_at)
+    VALUES (${shareId}, ${documentId}, ${shareToken}, ${sharedWithLabel}, 'view_only', ${expiresAt})
+  `;
 
-  logAudit({ documentId, shareId, action: "shared", actorLabel: "owner" });
+  await logAudit({ documentId, shareId, action: "shared", actorLabel: "owner" });
 
   return NextResponse.json({
     share: {
