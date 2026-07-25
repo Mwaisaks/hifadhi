@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { BUSINESS_PERMIT_FORM } from "@/lib/forms";
 
 type Values = Record<string, string>;
@@ -12,6 +13,7 @@ export default function AutofillForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [ranOnce, setRanOnce] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
 
   function updateValue(key: string, value: string) {
     setValues((prev) => ({ ...prev, [key]: value }));
@@ -51,7 +53,41 @@ export default function AutofillForm() {
     setValues({});
     setFilledFrom({});
     setRanOnce(false);
+    setSubmitted(false);
     setError(null);
+  }
+
+  const filledFromWalletCount = Object.values(filledFrom).filter(Boolean).length;
+  const totalFields = BUSINESS_PERMIT_FORM.fields.length;
+
+  if (submitted) {
+    return (
+      <div className="bg-white rounded-xl border border-neutral-200 p-8 text-center space-y-4">
+        <div className="text-4xl">✅</div>
+        <h2 className="text-lg font-semibold text-neutral-900">
+          Application submitted
+        </h2>
+        <p className="text-sm text-neutral-500">
+          {filledFromWalletCount} of {totalFields} fields were filled
+          automatically from your Hifadhi wallet — no retyping your ID or KRA
+          PIN.
+        </p>
+        <div className="flex items-center justify-center gap-4 pt-2">
+          <button
+            onClick={handleReset}
+            className="rounded-lg border border-neutral-300 px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50"
+          >
+            Start over
+          </button>
+          <Link
+            href="/dashboard"
+            className="rounded-lg bg-emerald-600 text-white px-4 py-2 text-sm font-medium hover:bg-emerald-700"
+          >
+            Back to wallet
+          </Link>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -95,11 +131,20 @@ export default function AutofillForm() {
                   ? "Not yet filled"
                   : "Enter manually — not stored in your wallet"
               }
-              className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              className="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
             />
           </div>
         ))}
       </div>
+
+      {ranOnce && (
+        <button
+          onClick={() => setSubmitted(true)}
+          className="w-full rounded-lg bg-neutral-900 text-white py-2 text-sm font-medium hover:bg-neutral-800"
+        >
+          Submit application
+        </button>
+      )}
     </div>
   );
 }

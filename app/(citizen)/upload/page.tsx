@@ -79,7 +79,7 @@ export default function UploadPage() {
             <select
               value={docType}
               onChange={(e) => setDocType(e.target.value)}
-              className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              className="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
             >
               {DOC_TYPES.map((t) => (
                 <option key={t.value} value={t.value}>

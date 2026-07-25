@@ -3,6 +3,9 @@ import { db } from "@/lib/db";
 import { decryptBuffer } from "@/lib/crypto";
 import { absoluteDocumentPath } from "@/lib/storage";
 import { logAudit } from "@/lib/audit";
+import VerifyGuard from "./VerifyGuard";
+
+export const dynamic = "force-dynamic";
 
 interface ShareRow {
   id: string;
@@ -120,6 +123,7 @@ export default async function VerifyPage({
   const isPdf = doc.mime_type === "application/pdf";
 
   return (
+    <VerifyGuard token={token}>
     <div className="min-h-screen bg-neutral-50">
       <header className="border-b border-neutral-200 bg-white">
         <div className="max-w-2xl mx-auto px-6 py-4">
@@ -189,5 +193,6 @@ export default async function VerifyPage({
         </p>
       </main>
     </div>
+    </VerifyGuard>
   );
 }
