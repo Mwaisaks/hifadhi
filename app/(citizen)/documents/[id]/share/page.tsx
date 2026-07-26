@@ -2,6 +2,9 @@ import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth";
 import { sql } from "@/lib/db";
+import { getLocaleAndDictionary } from "@/lib/i18n-server";
+import { docTypeLabel } from "@/lib/i18n";
+import LocaleToggle from "@/components/LocaleToggle";
 import ShareManager from "./ShareManager";
 
 interface DocumentRow {
@@ -28,14 +31,6 @@ interface AuditRow {
   occurred_at: string;
 }
 
-const DOC_TYPE_LABELS: Record<string, string> = {
-  national_id: "National ID",
-  kra_pin: "KRA PIN Certificate",
-  passport: "Passport",
-  certificate: "Certificate",
-  other: "Document",
-};
-
 export default async function SharePage({
   params,
 }: {
@@ -46,6 +41,7 @@ export default async function SharePage({
     redirect("/login");
   }
 
+  const { locale, dict } = await getLocaleAndDictionary();
   const { id } = await params;
 
   const docRows = (await sql`
@@ -73,26 +69,29 @@ export default async function SharePage({
   return (
     <div className="min-h-screen bg-neutral-50">
       <header className="border-b border-neutral-200 bg-white">
-        <div className="max-w-2xl mx-auto px-6 py-4">
+        <div className="max-w-2xl mx-auto px-6 py-4 flex items-center justify-between">
           <Link
             href="/dashboard"
             className="text-sm text-neutral-500 hover:text-neutral-800"
           >
-            ← Back to wallet
+            {dict.nav.backToWallet}
           </Link>
+          <LocaleToggle locale={locale} />
         </div>
       </header>
       <main className="max-w-2xl mx-auto px-6 py-10">
         <h1 className="text-2xl font-semibold text-neutral-900 mb-1">
-          {DOC_TYPE_LABELS[doc.doc_type] ?? doc.doc_type}
+          {docTypeLabel(doc.doc_type, dict)}
           {fields?.full_name ? ` — ${fields.full_name}` : ""}
         </h1>
-        <p className="text-sm text-neutral-500 mb-8">
-          Share this document with a specific person, for a limited time.
-          Every view is logged below.
-        </p>
+        <p className="text-sm text-neutral-500 mb-8">{dict.share.subtitle}</p>
 
-        <ShareManager documentId={doc.id} shares={shares} auditLog={auditLog} />
+        <ShareManager
+          locale={locale}
+          documentId={doc.id}
+          shares={shares}
+          auditLog={auditLog}
+        />
       </main>
     </div>
   );

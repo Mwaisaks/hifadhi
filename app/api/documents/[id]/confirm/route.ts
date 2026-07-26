@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { sql } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
+import { normalizeExpiryForStorage } from "@/lib/expiry";
 
 const confirmSchema = z.object({
   doc_type: z
@@ -15,13 +16,6 @@ const confirmSchema = z.object({
   expiry_date: z.string().nullable(),
   confidence: z.number().min(0).max(1).nullable().optional(),
 });
-
-function toIsoDateOrNull(value: string | null): string | null {
-  if (!value) return null;
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return null;
-  return date.toISOString();
-}
 
 export async function POST(
   req: NextRequest,
@@ -53,14 +47,18 @@ export async function POST(
   }
 
   const { doc_type, confidence, ...fields } = parsed.data;
-  const expiresAt = toIsoDateOrNull(fields.expiry_date);
+  const expiresAt = normalizeExpiryForStorage(fields.expiry_date);
 
+  // `pending_extraction` is the unconfirmed intake guess; once the citizen has
+  // reviewed and saved, `extracted_fields` is the record of truth and the guess
+  // is dropped so a later re-run can't resurrect uncorrected values.
   await sql`
     UPDATE documents
     SET doc_type = ${doc_type ?? doc.doc_type},
         extracted_fields = ${JSON.stringify(fields)},
         extraction_confidence = ${confidence ?? null},
-        expires_at = ${expiresAt}
+        expires_at = ${expiresAt},
+        pending_extraction = NULL
     WHERE id = ${documentId}
   `;
 

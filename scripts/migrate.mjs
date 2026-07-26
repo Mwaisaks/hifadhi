@@ -30,10 +30,13 @@ async function migrate() {
       auth_tag TEXT NOT NULL,
       extracted_fields TEXT,
       extraction_confidence REAL,
+      pending_extraction TEXT,
       uploaded_at TIMESTAMPTZ NOT NULL DEFAULT now(),
       expires_at TIMESTAMPTZ
     )
   `;
+
+  await sql`ALTER TABLE documents ADD COLUMN IF NOT EXISTS pending_extraction TEXT`;
 
   await sql`
     CREATE TABLE IF NOT EXISTS shares (
